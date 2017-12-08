@@ -17,8 +17,8 @@ bl_info = {
     "name": "Tree model (QSM) and leaf model (L-QSM) importer",
     "category": "Import-Export",
     "author": "Markku Åkerblom",
-    "version": (0, 5, 0),
-    "blender": (2, 78 ,0),
+    "version": (0, 6, 0),
+    "blender": (2, 79 ,0),
     "location": "View 3D > Tool Shelf > QSM",
     "description": "Addon that imports Quantitative Structure Models as either individual cylinders, or as continuous surfaces. A branch is either a collection of Bezier line segments (cylinders) or a Bezier curve. Each type of Bezier curve is lofted by applying a bevel object such as a Bezier circle. The add-on can also import leaf models in Wavefront OBJ format. A single leaf should be either a triangle or a rectangle.",
     'support': 'TESTING',
@@ -528,6 +528,8 @@ class ImportQSM(bpy.types.Operator):
                 if len(params) > 9:
                     fVertColor = True
                     VertColor = float(params[9])
+                    if len(params) > 11:
+                        VertColor = Vector((float(params[9]), float(params[10]), float(params[11])))
 
                 # If this is the first branch, or the index differs form the previous row.
                 if NBranch == 0 or iBranch != iLastBranch:
@@ -633,7 +635,10 @@ class ImportQSM(bpy.types.Operator):
                     # repeating the input value three times.
                     for v in bm.verts:
                         for loop in v.link_loops:
-                            loop[colors] = [VertColor] * 3
+                            if len(VertColor) > 1:
+                                loop[colors] = VertColor
+                            else:
+                                loop[colors] = [VertColor] * 3
 
                 # Update mesh data and delete bmesh.
                 bm.to_mesh(me)
@@ -1268,7 +1273,10 @@ class UpdateMeshQSMColorMap(bpy.types.Operator):
                     sys.stdout.flush()
 
                 # Append new colourmap value to array.
-                CylinderColors.append(float(params[9]))
+                if len(params) > 11:
+                    CylinderColors.append(Vector((float(params[9]), float(params[10]), float(params[11]))))
+                else:
+                    CylinderColors.append(float(params[9]))
 
             # Get colour layer that holds colourmap data.
             colors = bm.loops.layers.color.get("Color")
@@ -1284,7 +1292,10 @@ class UpdateMeshQSMColorMap(bpy.types.Operator):
 
                 # Update colour layer with new colour value.
                 for loop in v.link_loops:
-                    loop[colors] = [CylinderColors[iCyl-1]] * 3
+                    if len(CylinderColors[iCyl-1]) > 1:
+                        loop[colors] = CylinderColors[iCyl-1]
+                    else:
+                        loop[colors] = [CylinderColors[iCyl-1]] * 3
 
         # Update mesh data.
         bm.to_mesh(me)
