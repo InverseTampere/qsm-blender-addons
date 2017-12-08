@@ -90,6 +90,8 @@ Selecting *Bezier branch* as the import type, creates a single Bezier spline per
 
 ## Importing leaf models
 
+![Leaf import UI](https://github.com/InverseTampere/qsm-blender-addons/raw/master/qsm-addon-ui-leaves.png)
+
 Leaf models are imported from a text file following the Wavefront OBJ-format, that defines vertices and indices of vertices forming faces. Each leaf is expected to have the same basis geometry. The input parameters are the following:
 
 Name | Type | Description
