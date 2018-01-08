@@ -1,5 +1,7 @@
 # QSM Blender Addons
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1137261.svg)](https://doi.org/10.5281/zenodo.1137261)
+
 Blender addon for importing cylindrical quantitative structure models (QSM) and leaf models (L-QSM). QSM is a description of the topology and geometry of a tree. For example the [TreeQSM](https://github.com/InverseTampere/TreeQSM) method can be used to reconstruct QSMs for terrestrial laser scanning data. These tree models can be augmented with a leaf cover, with the [QSM-FaNNI](https://github.com/InverseTampere/qsm-fanni-matlab) algorithm. The QSM-blender-addon can be used to import the resulting geometry from both procedures into [Blender](https://www.blender.org/).
 
 In the future the repository may be extended with additional addons related to QSMs. However, at the moment the repository only covers the import addon.
