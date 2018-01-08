@@ -58,7 +58,7 @@ Once all the parameters have been selected, the import procedure is started usin
 
 ![Addon mesh UI](https://github.com/InverseTampere/qsm-blender-addons/raw/master/qsm-addon-ui-mesh.png)
 
-The level-of-detail for imported cylinder meshes can be selected with the *Vertex count* parameter. Vertex count is defined as the number of vertices on a single circular loop of a cylinder, *i.e.*, the number of faces of the cylinder envelope. The two element vector parameter can be used to set the minimum and maximum vertex counts. The vertex count value is selected for each cylinder during the import, by linearly interpolating between the minimum and maximum vertex counts. The interpolation is defined as:
+The level-of-detail for imported cylinder meshes can be selected with the *Vertex count Min* and *Max* parameters. Vertex count is defined as the number of vertices on a single circular loop of a cylinder, *i.e.*, the number of faces of the cylinder envelope. The two element vector parameter can be used to set the minimum and maximum vertex counts. The vertex count value is selected for each cylinder during the import, by linearly interpolating between the minimum and maximum vertex counts. The interpolation is defined as:
 
 ```python
 nvert = vmin + (vmax-vmin)*(r-rmin)/(rmax-rmin)
@@ -82,7 +82,7 @@ Vertex coloring is currently not available for curve objects.
 
 ![Addon Bezier UI](https://github.com/InverseTampere/qsm-blender-addons/raw/master/qsm-addon-ui-bezier.png)
 
-With the two Bezier curve based import types, the level-of-detail does not need to be fixed upon import. Instead a lofting object is used to define the cross-section shape around the Bezier curve defining either a single cylinder or a complete branch. The lofting object is set with the *Bevel Object* parameter that is an object selector. The lofting object should be a curve object, *e.g.*, a Bezier circle with a unit radius. The `Resolution` of the curves spline can be used to change the level-of-detail of all the cylinders in the resulting model, in the objects *Object data* panel.
+With the two Bezier curve based import types, the level-of-detail does not need to be fixed upon import. Instead, a lofting object is used to define the cross-section shape around the Bezier curve defining either a single cylinder or a complete branch. If the *Create bevel object* checkbox is checked, a Bezier circle curve object is created during the import process. The resolution of the curve is set to 5 by default, and the newly generated object is parented to the QSM parent object. If the checkbox is unchecked, the user can select the lofting object with the *Bevel Object* parameter that is an object selector. The lofting object should be a curve object, *e.g.*, a Bezier circle with a unit radius. The `Resolution` of the curves spline can be used to change the level-of-detail of all the cylinders in the resulting model, in the objects *Object data* panel.
 
 Selecting *Bezier cylinder* as the import type, creates a single Bezier spline, with two curve points at the starting and ending point of the each cylinder. The radius value of the spline will be set to the radius value of the cylinder.
 
@@ -98,8 +98,12 @@ Name | Type | Description
 ---|---|---
 Input file | File path | Path to a input file with leaf geometry. The *Browse* button can be used to open a graphical file browsing view.
 Material | Material name | Material applied to the leaves. Selecting a material is optional.
-Vertex count | Integer | Number of vertices on a single leaf. The number is used to create a UV-map where each leaf is overlaid on the UV-plane. Currently supported values are 3 and 4.
+Generate UV map | Checkbox | When unchecked the UV generation process is skipped.
+UV map type | Dropdown | Only visible when *Generate UV map* is checked. Two presets: 1) isosceles triangle, 2) unit square. And a custom option, where the local (x,y)-coordinates of a selected mesh are copied for each imported leaf. Please note that the order of the vertices in the input mesh is key. Extruding starting from a single vertex is probably the easiest way to control the vertex order.
+UV mesh data | Mesh selector | Only visible when *UV map type* is set to *Custom*. Used to select a mesh, whose (x,y)-coordinates are copied to form the UV-map of each leaf. Note that there is no checking that the coordinates lie in the interval [0,1].
 
 After filling in the required parameters, the import process is initiated using the *Import leaf model* button. An example of a rendered, imported leaf model and a QSM can be seen below.
 
 ![Example render](https://github.com/InverseTampere/qsm-fanni-matlab/raw/master/src/test_result.png)
+
+If a UV-map is selected to be generated, a map named *Overlapping* is added to the mesh data. Individual leaves of the leaf model are overlayed in the resulting UV-map, *e.g.*, to project the same image onto all of them. Note that the leaves can be colored, for example with an uniform color, even without a UV-map.

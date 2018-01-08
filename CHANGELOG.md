@@ -1,3 +1,20 @@
+# 2018-01-08 Version 0.7.0
+
+## QSM import
+- Cylinder vertex count minimum and maximum values
+	- Separated parameters into two separate properties internally and cleaned UI.
+	- Implemented conditions 3 <= min, max <= 50 and min <= max.
+	- Changed default value of both min and max to 16.
+- The QSM and leaf import panels now only show in object mode.
+- Added error msg when given input path does not point to a file.
+- Added option to generate curve bevel object, i.e., a unit Bezier circle parented to the QSM parent.
+
+## Leaf model import
+- Redesigned the UV-map generation process.
+	- Option to skip UV generation (default).
+	- UV-map shape has to presets and a custom option.
+	- Custom maps can be generated based on a user-selectable mesh (x,y)-coordinates.
+
 # 2017-12-08 Version 0.6.0
 
 - Added documentation with images.

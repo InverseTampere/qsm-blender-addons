@@ -17,7 +17,7 @@ bl_info = {
     "name": "Tree model (QSM) and leaf model (L-QSM) importer",
     "category": "Import-Export",
     "author": "Markku Åkerblom",
-    "version": (0, 6, 0),
+    "version": (0, 7, 0),
     "blender": (2, 79 ,0),
     "location": "View 3D > Tool Shelf > QSM",
     "description": "Addon that imports Quantitative Structure Models as either individual cylinders, or as continuous surfaces. A branch is either a collection of Bezier line segments (cylinders) or a Bezier curve. Each type of Bezier curve is lofted by applying a bevel object such as a Bezier circle. The add-on can also import leaf models in Wavefront OBJ format. A single leaf should be either a triangle or a rectangle.",
@@ -26,6 +26,7 @@ bl_info = {
 
 import bpy
 import sys
+import os
 import math
 import bmesh
 import mathutils
@@ -67,6 +68,7 @@ class QSMPanel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'TOOLS'
     bl_category = "QSM"
+    bl_context = "objectmode"
 
     # Layout of the QSM import panel.
     def draw(self, context):
@@ -100,22 +102,32 @@ class QSMPanel(bpy.types.Panel):
         row = layout.row()
         row.prop(scene, "qsmSeparation")
 
-        layout.separator()
+        #layout.separator()
 
         # UI elements for mesh objects.
         if scene.qsmImportMode == 'mesh_cylinder':
 
             # Vertex count inputs.
             row = layout.row()
-            row.prop(scene,"qsmVertexCount", text='Vertex count')
+            layout.label("Vertex count:")
+
+            row = layout.row(align=True)
+            row.prop(scene,"qsmVertexCountMin", text='Min')
+            row.prop(scene,"qsmVertexCountMax", text='Max')
 
         # UI elements for bezier objects.
         elif scene.qsmImportMode == 'bezier_cylinder' or \
              scene.qsmImportMode == 'bezier_branch':
 
-            # Bevel object selector.
+             # Bevel object generation.
             row = layout.row()
-            row.prop_search(scene, "qsmBevelObject", scene, "objects")
+            row.prop(scene, "qsmGenerateBevelObject")
+
+            if not scene.qsmGenerateBevelObject:
+
+                # Bevel object selector.
+                row = layout.row()
+                row.prop_search(scene, "qsmBevelObject", scene, "objects")
         
         layout.separator()
 
@@ -139,6 +151,7 @@ class LeafModelPanel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'TOOLS'
     bl_category = 'QSM'
+    bl_context = "objectmode"
 
     # Layout of the leaf model import panel.
     def draw(self, context):
@@ -158,10 +171,31 @@ class LeafModelPanel(bpy.types.Panel):
         row.prop_search(scene, "leafModelMaterial", data, "materials")     
         
         # Leaf vertex count selector.
+        #row = layout.row()
+        #row.prop(scene,"leaf_model_vertex_count")
+
+        layout.separator()
+
+        # Boolean: generate UVs.
         row = layout.row()
-        row.prop(scene,"leaf_model_vertex_count")
+        row.prop(scene, "leafUvGeneration")
+
+        if scene.leafUvGeneration:
+            layout.separator()
+
+            # Dropdown: UV type.
+            row = layout.row()
+            row.prop(scene, "leafUvType", expand=False)
+
+            if scene.leafUvType == 'custom':
+
+                # Mesh selector: UV source mesh.
+                row = layout.row()
+                row.prop_search(scene, "leafUvSource", bpy.data, "meshes")
+
+        layout.separator()
         
-        # Import buttons.
+        # Import button.
         row = layout.row()
         row.operator("leaf.import_leaves")
 
@@ -193,6 +227,27 @@ class ImportLeafModel(bpy.types.Operator):
 
         # Convert to absolute path.
         file_path = bpy.path.abspath(filestr)
+
+        # Check that file exists.
+        if not os.path.isfile(file_path):
+            self.report({'ERROR_INVALID_INPUT'},'No file with given path.')
+            print('Cancelled.')
+            return {'CANCELLED'}
+
+        # Check if UVs are to be generated.
+        fUvGeneration = scene.leafUvGeneration
+
+        if fUvGeneration:
+            if scene.leafUvType == 'custom':
+                SourceName = scene.leafUvSource
+
+                UvSource = bpy.data.meshes.get(SourceName)
+
+                if not UvSource:
+                    self.report({'ERROR_INVALID_INPUT'},'Custom UV generation selected, but UV mesh not found.')
+                    print('Cancelled.')
+                    return {'CANCELLED'}
+
 
         # Record start time.
         start = datetime.datetime.now()
@@ -229,24 +284,52 @@ class ImportLeafModel(bpy.types.Operator):
             if not mat:
                 print('Material not found.')
         
+
         # Get imported objects, assumed to be selected.
         selected_obj = bpy.context.selected_objects[:]
+
+        # Flag: skip UV generation due to input errors.
+        fSkipUv = False
         
-        # Number of vertices in a single leaf.
-        NVert = scene['leaf_model_vertex_count']
-        
-        # Name of the UV map to be created. Using "Overlapping" because
-        # all leaves are overlayed in UV coordinates, to allow simple 
-        # UV mapping of a single leaf image.
-        MapName = 'Overlapping'
-        
-        # UV vertex locations for triangle.
-        uv_verts = [Vector((1,0)), Vector((0.5,1)), Vector((0,0))]
-        
-        # UV vertex locations for rectangle.
-        if NVert == 4:
-            uv_verts = [Vector((1,0)), Vector((1,1)),Vector((0,1)), Vector((0,0))]
-        
+        if fUvGeneration:
+
+            # Name of the UV map to be created. Using "Overlapping" because
+            # all leaves are overlayed in UV coordinates, to allow simple 
+            # UV mapping of a single leaf image.
+            MapName = 'Overlapping'
+
+            leafUvType = scene.leafUvType
+
+            
+            if leafUvType == 'isosceles_triangle':
+                # UV vertex locations for a isosceles triangle.
+                uv_verts = [Vector((1,0)), Vector((0.5,1)), Vector((0,0))]
+            
+            elif leafUvType == 'square':
+                # UV vertex locations for a square.
+                uv_verts = [Vector((1,0)), Vector((1,1)),Vector((0,1)), Vector((0,0))]
+
+            elif leafUvType == 'custom':
+
+                # Initialize array.
+                uv_verts = []
+
+                # Copy local (x,y)-coordinates of source mesh.
+                for v in UvSource.vertices:
+                    x = v.co[0]
+                    y = v.co[1]
+                    uv_verts.append(Vector((x,y)))                    
+
+            else:
+                # Otherwise, the selection is illegal.
+                self.report({'WARNING'},'Unknown UV generation type selected. UV generation skipped.')
+                fSkipUv = True
+
+            # Number of vertices in input UV map.
+            NVert = len(uv_verts)
+            
+                           
+
         # Iterate over selected objects.
         for obj in selected_obj:
             
@@ -256,36 +339,42 @@ class ImportLeafModel(bpy.types.Operator):
             # Set material if exists.
             if mat:
                 me.materials.append(mat)
-            
-            # Create new UV map.
-            me.uv_textures.new(MapName)
-            
-            # Create a bmesh from mesh data for UV map manipulation.
-            bm = bmesh.new()
-            bm.from_mesh(me)
-            
-            # Create UV layer.
-            uv_layer = bm.loops.layers.uv[0]
-            
-            # Initialize lookup table.
-            bm.faces.ensure_lookup_table()
-            
-            # Number of leaves.
-            NFace = len(bm.faces)
 
-            # Iterate over leaves.
-            for iFace in range(NFace):
-                
-                # Iterate over vertices in leaf.
-                for iVert in range(NVert):
-                    
-                    # Index of current vertex modulo set number of vertices.
-                    uv_index = iVert%NVert
-                    # Set UV map vertex to coordinate given by above index.
-                    bm.faces[iFace].loops[iVert][uv_layer].uv = uv_verts[uv_index]
+            # UV map creation.
+            if fUvGeneration and xnot fSkipUv: 
             
-            # Update mesh data.
-            bm.to_mesh(me)
+                # Create new UV map.
+                me.uv_textures.new(MapName)
+                
+                # Create a bmesh from mesh data for UV map manipulation.
+                bm = bmesh.new()
+                bm.from_mesh(me)
+                
+                # Create UV layer.
+                uv_layer = bm.loops.layers.uv[0]
+                
+                # Initialize lookup table.
+                bm.faces.ensure_lookup_table()
+                
+                # Number of leaves.
+                NFace = len(bm.faces)
+
+                # Iterate over leaves.
+                for iFace in range(NFace):
+
+                    # Number of vertices in face.
+                    NFaceVert = len(bm.faces[iFace].loops)
+                    
+                    # Iterate over vertices in leaf.
+                    for iVert in range(NFaceVert):
+                        
+                        # Index of current vertex modulo set number of vertices.
+                        uv_index = iVert%NVert
+                        # Set UV map vertex to coordinate given by above index.
+                        bm.faces[iFace].loops[iVert][uv_layer].uv = uv_verts[uv_index]
+                
+                # Update mesh data.
+                bm.to_mesh(me)
         
         # Record end time.
         end = datetime.datetime.now()
@@ -346,7 +435,8 @@ class ImportQSM(bpy.types.Operator):
         return ob
 
     # Function to import a QSM as mesh cylinders.
-    def import_as_mesh_cylinders(self, context, file_path, fBranchSeparation,
+    def import_as_mesh_cylinders(self, context, file_path, EmptyParent, 
+                                 fBranchSeparation,
                                  matStem, matBranch):
 
         print('Importing QSM as mesh cylinders.')
@@ -364,9 +454,9 @@ class ImportQSM(bpy.types.Operator):
         fIdColor = True
 
         # Minimum vertex count in cylinder rings.
-        vmin = scene.qsmVertexCount[0]
+        vmin = scene.qsmVertexCountMin
         # Maximum vertex count.
-        vmax = scene.qsmVertexCount[1]
+        vmax = scene.qsmVertexCountMax
 
         # Number of different vertex counts.
         vcount = vmax - vmin + 1
@@ -477,9 +567,6 @@ class ImportQSM(bpy.types.Operator):
             
             # Return to file beginning for second iteration.
             lines.seek(0)
-
-            # Create empty parent for QSM object(s).
-            EmptyParent = self.createQSMParent(scene)
 
             # List of objects that are later joined to form either a branch or the full QSM.
             allobj = []
@@ -666,7 +753,7 @@ class ImportQSM(bpy.types.Operator):
 
 
     # Function to import a QSM as Bezier cylinders.
-    def import_as_bezier_cylinders(self, context, file_path, fBranchSeparation, 
+    def import_as_bezier_cylinders(self, context, file_path, EmptyParent, fBranchSeparation, 
                                    matStem, matBranch, BevelObject):
 
         print('Importing QSM as Bezier cylinders.')
@@ -691,12 +778,8 @@ class ImportQSM(bpy.types.Operator):
             # Number of digits to use in object naming.
             NDigit = len(str(NLine))
             
-            # If file had any lines.
-            if NLine > 0:
-
-                # Create empty parent for QSM object(s).
-                EmptyParent = self.createQSMParent(scene)
-            else:
+            # If file did not have any lines.
+            if NLine <= 0:
                 self.report({'ERROR_INVALID_INPUT'},'Selected file is empty.')
                 return {'CANCELLED'}
 
@@ -911,7 +994,8 @@ class ImportQSM(bpy.types.Operator):
 
     
     # Function to import a QSM as branch-level bevelled Bezier curves.
-    def import_as_bezier_curves(self, context, file_path, fBranchSeparation,
+    def import_as_bezier_curves(self, context, file_path, EmptyParent, 
+                                fBranchSeparation,
                                 matStem, matBranch, BevelObject):
 
         print('Importing QSM as Bezier curves.')
@@ -940,9 +1024,6 @@ class ImportQSM(bpy.types.Operator):
             
             # If file had any rows.
             if NLine > 0:
-
-                # Create empty parent for QSM object(s).
-                EmptyParent = self.createQSMParent(scene)
 
                 # If multiple objects are created, use unique object and mesh names
                 # by numbering them.
@@ -1116,25 +1197,58 @@ class ImportQSM(bpy.types.Operator):
         # Convert to absolute path.
         file_path = bpy.path.abspath(filestr)
 
+        # Check that file exists.
+        if not os.path.isfile(file_path):
+            self.report({'ERROR_INVALID_INPUT'},'No file with given path.')
+            print('Cancelled.')
+            return {'CANCELLED'}
+
         # Import mode: mesh / bezier
         mode = scene.qsmImportMode
         # Flag: separate objects for each branch.
         fBranchSeparation = scene.qsmSeparation
 
+        # Create empty parent for QSM object(s).
+        EmptyParent = self.createQSMParent(scene)
+
         # If curve-based mode, check that bevel object is given and
         # exists.
         if mode == 'bezier_cylinder' or mode == 'bezier_branch':
-            # Bevel object name.
-            bevel_object_name = scene['qsmBevelObject']
-            # Get bevel object by name. This object is set as the bevel object
-            # of all the Bezier curves.
-            BevelObject = bpy.data.objects.get(bevel_object_name)
 
-            # Check that bevel object exists.
-            if not BevelObject:
-                self.report({'ERROR_INVALID_INPUT'},'Missing bevel object.')
-                print('Cancelled.')
-                return {'CANCELLED'}
+            if scene.qsmGenerateBevelObject:
+
+                # Get bevel object by name. This object is set as the bevel object
+                # of all the Bezier curves.
+                bpy.ops.curve.primitive_bezier_circle_add(radius=1,
+                                                          view_align=False, 
+                                                          enter_editmode=False, 
+                                                          location=(0, 0, 0))
+
+                # Selected object is the added curve.
+                BevelObject = context.selected_objects[0]
+
+                # Bevel object name.
+                BevelObject.name = 'BevelObject'
+                BevelObject.parent = EmptyParent
+                BevelObject.data.resolution_u = 5
+            else:
+                # Bevel object name.
+                bevel_object_name = scene['qsmBevelObject']
+                # Get bevel object by name. This object is set as the bevel object
+                # of all the Bezier curves.
+                BevelObject = bpy.data.objects.get(bevel_object_name)
+
+                # Check that bevel object exists.
+                if not BevelObject:
+                    self.report({'ERROR_INVALID_INPUT'},'Missing bevel object.')
+                    print('Cancelled.')
+                    return {'CANCELLED'}
+
+                # Check that the object is a curve object.
+                if BevelObject.type != 'CURVE':
+                    self.report({'ERROR_INVALID_INPUT'},'Bevel object has to be a curve.')
+                    print('Cancelled.')
+                    return {'CANCELLED'}
 
         # Get stem material name.
         matname = scene.qsmStemMaterial
@@ -1169,15 +1283,18 @@ class ImportQSM(bpy.types.Operator):
 
         # Mesh cylinder.
         if mode == 'mesh_cylinder':
-            self.import_as_mesh_cylinders(context, file_path, fBranchSeparation,
+            self.import_as_mesh_cylinders(context, file_path, EmptyParent, 
+                                          fBranchSeparation,
                                           matStem, matBranch)
         # Cylinder-level Bezier curves.
         elif mode == 'bezier_cylinder':
-            self.import_as_bezier_cylinders(context,file_path, fBranchSeparation,
+            self.import_as_bezier_cylinders(context, file_path, EmptyParent, 
+                                            fBranchSeparation,
                                             matStem, matBranch, BevelObject)
         # Branch-level Bezier curves.
         elif mode == 'bezier_branch':
-            self.import_as_bezier_curves(context,file_path, fBranchSeparation,
+            self.import_as_bezier_curves(context, file_path, EmptyParent, 
+                                         fBranchSeparation,
                                          matStem, matBranch, BevelObject)
 
         # Record end time.
@@ -1224,6 +1341,15 @@ class UpdateMeshQSMColorMap(bpy.types.Operator):
             self.report({'ERROR_INVALID_INPUT'},'Selected object is not a mesh.')
             return {'CANCELLED'}
 
+        # Path to input file.
+        file_path = bpy.path.abspath(scene['qsm_file_path'])
+
+        # Check that file exists.
+        if not os.path.isfile(file_path):
+            self.report({'ERROR_INVALID_INPUT'},'No file with given path.')
+            print('Cancelled.')
+            return {'CANCELLED'}
+
         # Mesh data of selected object.
         me = ob.data
         # Create bmesh object for data modification.
@@ -1238,9 +1364,6 @@ class UpdateMeshQSMColorMap(bpy.types.Operator):
         if not layer:
             self.report({'ERROR_INVALID_INPUT'},'Selected object does not contain cylinder id info.')
             return {'CANCELLED'}
-
-        # Path to input file.
-        file_path = bpy.path.abspath(scene['qsm_file_path'])
 
         with open(file_path) as lines:
             
@@ -1316,8 +1439,19 @@ class UpdateMeshQSMColorMap(bpy.types.Operator):
         return {'FINISHED'}
 
 
+def min_update(self, context):
+    mi = context.scene.qsmVertexCountMin
+    ma = context.scene.qsmVertexCountMax
 
+    if mi > ma:
+        context.scene.qsmVertexCountMax = mi
 
+def max_update(self, context):
+    mi = context.scene.qsmVertexCountMin
+    ma = context.scene.qsmVertexCountMax
+
+    if mi > ma:
+        context.scene.qsmVertexCountMin = ma
 
 def register():
 
@@ -1336,11 +1470,20 @@ def register():
       items=qsm_import_modes
       )
 
+    # Flag: add new bezier circle as bevel object
+    bpy.types.Scene.qsmGenerateBevelObject = bpy.props.BoolProperty \
+      (
+      name = "Create bevel object",
+      description = "If checked, a new object will be created as the bevel object of all branches.",
+      default = True,
+      subtype = 'NONE',
+      )
+
     # Bevel object for curve based modes.
     bpy.types.Scene.qsmBevelObject = bpy.props.StringProperty \
       (
       name="Bevel Object",
-      description="Object that is asigned as the bevel object of each curve"
+      description="Object that is asigned as the bevel object of each curve",
       )
 
     # Name of the stem material.
@@ -1402,14 +1545,61 @@ def register():
       subtype = 'UNSIGNED'
       )
 
-    # Minimum and maximum cylinder ring vertex count.
-    bpy.types.Scene.qsmVertexCount = bpy.props.IntVectorProperty \
+    # Minimum cylinder ring vertex count.
+    bpy.types.Scene.qsmVertexCountMin = bpy.props.IntProperty \
       (
-      name = "Bounding box minimum",
-      default = (16,32),
+      name = "Vertex count minimum",
+      default = 16,
+      min = 3,
+      max = 50,
       subtype = 'NONE',
-      description = "Minimum and maximum number of vertices in mesh cylinders",
-      size = 2
+      description = "Minimum number of vertices in mesh cylinders",
+      update = min_update
+      )
+
+    # Minimum and maximum cylinder ring vertex count.
+    bpy.types.Scene.qsmVertexCountMax = bpy.props.IntProperty \
+      (
+      name = "Vertex count maximum",
+      default = 16,
+      min = 3,
+      max = 50,
+      subtype = 'NONE',
+      description = "Maximum number of vertices in mesh cylinders",
+      update = max_update
+      )
+
+    # Leaf UV
+
+    # Flag: generate UV map for leaves.
+    bpy.types.Scene.leafUvGeneration = bpy.props.BoolProperty \
+      (
+      name = "Generate UV map",
+      description = "Generate UV map for imported leaves.",
+      default = False,
+      subtype = 'NONE',
+      )
+
+    # Array for leaf UV map presents and custom option.
+    leaf_uv_modes = [
+        ("isosceles_triangle",   "Isosceles triangle",   "Isosceles triangle"),
+        ("square",   "Unit square",   "Unit square"),
+        ("custom",   "Custom",   "Custom vertices from object"),
+    ]
+
+    # Dropdown: UV map types.
+    bpy.types.Scene.leafUvType = bpy.props.EnumProperty \
+      (
+      name="UV map type",
+      description="Leaf UV map type",
+      items=leaf_uv_modes
+      )
+
+    # Mesh to base UV map on.
+    bpy.types.Scene.leafUvSource = bpy.props.StringProperty \
+      (
+      name="UV mesh data",
+      description="Object to base the generated UV map on.",
       )
 
     # Register classes.
@@ -1442,7 +1632,12 @@ def unregister():
     del bpy.types.Scene.leaf_model_file_path
     del bpy.types.Scene.leafModelMaterial
     del bpy.types.Scene.leaf_model_vertex_count
-    del bpy.types.Scene.qsmVertexCount
+    del bpy.types.Scene.qsmVertexCountMin
+    del bpy.types.Scene.qsmVertexCountMax
+    del bpy.types.Scene.qsmGenerateBevelObject
+    del bpy.types.Scene.leafUvType
+    del bpy.types.Scene.leafUvGeneration
+    del bpy.types.Scene.leafUvSource
 
     # Unregister classes.
     bpy.utils.unregister_class(LeafModelPanel)
