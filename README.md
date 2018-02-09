@@ -94,18 +94,50 @@ Selecting *Bezier branch* as the import type, creates a single Bezier spline per
 
 ![Leaf import UI](https://github.com/InverseTampere/qsm-blender-addons/raw/master/qsm-addon-ui-leaves.png)
 
-Leaf models are imported from a text file following the Wavefront OBJ-format, that defines vertices and indices of vertices forming faces. Each leaf is expected to have the same basis geometry. The input parameters are the following:
+Leaf models are imported from a text file in the Wavefront OBJ-format, that defines vertices and indices of vertices forming faces, or in a custom Extended OBJ-format with leaf basis geometry and leaf transition parameters. Each leaf is expected to have the same basis geometry.
+
+### Input formats
+
+For this importer, a Wavefront OBJ format can have to types of lines:
+1. Vertex definitions: "v 0.000 1.000 0.500"
+2. Face definitions: "f 1 2 3"
+
+Vertex definition line has three coordinates. Face definition lines have from 3 to *N* indices of vertices that form the face. The indices correspond to vertices in the order they have been defined previously in the file.
+
+The *Extended OBJ* format introduces a third, custom line type *Leaf definition*, that is designated with an *L* at the beginning of the line. The line type is followed by the following 15 or 18 parameters:
+1. (1-3) Twig start point
+2. (4-6) Leaf start point
+3. (7-9) Leaf direction (start point to leaf tip)
+4. (10-12) Leaf normal
+5. (13-15) Leaf scale
+6. (16-18) Leaf color [optional]
+
+The structure of an Extended OBJ format input file consists of three parts. First, the vertices of the leaf basis geometry are defined (in OBJ format). Then the faces of the basis geometry are defined similarly. After that a leaf definition line should be given for each leaf. During the import procedure the leaf definition parameters are used to transform the basis geometry to generate the final individual leaves. Using leaf transformation parameters allows the optional generation of a growth animation using shape keys, as well as, the assignment of vertex colors.
+
+### Options
+
+The input parameters are the following:
 
 Name | Type | Description
 ---|---|---
+Import format | Drowdown | Format of the input data file. Currently two options: Wavefront OBJ and a custom extension *Extended OBJ*.
 Input file | File path | Path to a input file with leaf geometry. The *Browse* button can be used to open a graphical file browsing view.
 Material | Material name | Material applied to the leaves. Selecting a material is optional.
+Assign vertex colors | Checkbox | When checked a new vertex color layer is created during the import process.
+Color source | Dropdown | Source of the vertex color data. Currently two options: 1) Randomize, *i.e.*, sample a uniform distribution for each leaf and RGB color component; 2) From file, three additional columns from the input file are used as RGB color components.
+Generate shape keys | Checkbox | When checked a shape key layer named *ReverseGrowth* is created during the import process for animating leaf growth. On this shape key layer each leaf is reduced to a single point in the origin of the respective twig.
 Generate UV map | Checkbox | When unchecked the UV generation process is skipped.
 UV map type | Dropdown | Only visible when *Generate UV map* is checked. Two presets: 1) isosceles triangle, 2) unit square. And a custom option, where the local (x,y)-coordinates of a selected mesh are copied for each imported leaf. Please note that the order of the vertices in the input mesh is key. Extruding starting from a single vertex is probably the easiest way to control the vertex order.
 UV mesh data | Mesh selector | Only visible when *UV map type* is set to *Custom*. Used to select a mesh, whose (x,y)-coordinates are copied to form the UV-map of each leaf. Note that there is no checking that the coordinates lie in the interval [0,1].
+
+### Running the import procedure
 
 After filling in the required parameters, the import process is initiated using the *Import leaf model* button. An example of a rendered, imported leaf model and a QSM can be seen below.
 
 ![Example render](https://github.com/InverseTampere/qsm-fanni-matlab/raw/master/src/test_result.png)
 
 If a UV-map is selected to be generated, a map named *Overlapping* is added to the mesh data. Individual leaves of the leaf model are overlayed in the resulting UV-map, *e.g.*, to project the same image onto all of them. Note that the leaves can be colored, for example with an uniform color, even without a UV-map.
+
+If vertex colors are set to be assigned, a vertex color layer named *Color* is added to the mesh data. The layer can be accessed in the material node editor with the Attribute node by giving the name of the vertex color layer, which in this case is "Color".
+
+If shape key generation is active, two shape key layers are created. The *Basis* layer contains the data as it is given in the input data. On the *ReverseGrowth* layer the vertices of each leaf are reduced to single points at the respective twig starting points. When transforming or animating the value of the *ReverseGrowth* layer from zero to one, the leaves shrink from their actual size to unseen points. Running the animation in the opposite direction gives the impression of leaf growth.

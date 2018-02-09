@@ -1,3 +1,11 @@
+# 2018-02-09 Version 0.8.0
+
+- Internal: updated custom setting structure to use property groups to avoid conflicts with other addons.
+	- The scene object now has only one custom property for QSM import and one for leaf model import.
+- Added additional leaf data import format: *Extended OBJ*.
+- Added option to generate leaf growth animation with a shape key, when using the 'Extended OBJ' import format.
+- Added option to assign leaf vertex colors randomly or from the input file, when using the 'Extended OBJ' import format.
+
 # 2018-01-08 Version 0.7.0
 
 ## QSM import
