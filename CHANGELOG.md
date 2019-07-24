@@ -1,3 +1,13 @@
+# 2019-07-24 Version 0.9.0
+
+- Fixed import bug, when importing mesh cylinder with single color value.
+- Added option for *Advanced* growth animations.
+	- User can select the number of growth groups.
+	- Leaves are divided evenly into these groups and each group growth is controlled by a single shape key.
+	- A custom property called *Growth* is generated for the mesh, and it drives all the shape key values, allowing simple animation of all the growth groups.
+	- UI controls provided for customizing randomness of growth group start times when driven with the custom property.
+- UV coordinates are now scaled to fill the unit square.
+
 # 2018-02-09 Version 0.8.0
 
 - Internal: updated custom setting structure to use property groups to avoid conflicts with other addons.

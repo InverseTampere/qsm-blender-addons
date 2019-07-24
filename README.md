@@ -125,10 +125,8 @@ Input file | File path | Path to a input file with leaf geometry. The *Browse* b
 Material | Material name | Material applied to the leaves. Selecting a material is optional.
 Assign vertex colors | Checkbox | When checked a new vertex color layer is created during the import process.
 Color source | Dropdown | Source of the vertex color data. Currently two options: 1) Randomize, *i.e.*, sample a uniform distribution for each leaf and RGB color component; 2) From file, three additional columns from the input file are used as RGB color components.
-Generate shape keys | Checkbox | When checked a shape key layer named *ReverseGrowth* is created during the import process for animating leaf growth. On this shape key layer each leaf is reduced to a single point in the origin of the respective twig.
-Generate UV map | Checkbox | When unchecked the UV generation process is skipped.
-UV map type | Dropdown | Only visible when *Generate UV map* is checked. Two presets: 1) isosceles triangle, 2) unit square. And a custom option, where the local (x,y)-coordinates of a selected mesh are copied for each imported leaf. Please note that the order of the vertices in the input mesh is key. Extruding starting from a single vertex is probably the easiest way to control the vertex order.
-UV mesh data | Mesh selector | Only visible when *UV map type* is set to *Custom*. Used to select a mesh, whose (x,y)-coordinates are copied to form the UV-map of each leaf. Note that there is no checking that the coordinates lie in the interval [0,1].
+Generate shape keys | Checkbox | When checked one or more shape key layers with a name starting with *ReverseGrowth* are created during the import process for animating leaf growth. On these shape key layers each leaf is reduced to a single point in the origin of the respective twig. See *Generating growth animations* section for details.
+Generate UV map | Checkbox | When checked UV coordinates are generated for each leaf. The coordinates of separate leaves will overlap. See *Generating UV coordinates* section for details.
 
 ### Running the import procedure
 
@@ -141,3 +139,36 @@ If a UV-map is selected to be generated, a map named *Overlapping* is added to t
 If vertex colors are set to be assigned, a vertex color layer named *Color* is added to the mesh data. The layer can be accessed in the material node editor with the Attribute node by giving the name of the vertex color layer, which in this case is "Color".
 
 If shape key generation is active, two shape key layers are created. The *Basis* layer contains the data as it is given in the input data. On the *ReverseGrowth* layer the vertices of each leaf are reduced to single points at the respective twig starting points. When transforming or animating the value of the *ReverseGrowth* layer from zero to one, the leaves shrink from their actual size to unseen points. Running the animation in the opposite direction gives the impression of leaf growth.
+
+### Generating growth animations
+
+When the *Generate shape keys* checkbox is checked the following controls appear for controlling the growth animation generation.
+
+Regardless of the growth animation type, a custom property is created for the leaf mesh for driving the growth animation with a single control. The name of the property is *Growth*.
+
+#### Type (dropdown)
+
+When the option *Simple* is selected, as single shape key layer named *ReverseGrowth* is created. On this layer the vertices of each leaf are moved to the start point of the leaf petiole/twig, creating the illusion of reverse leaf growth when the shape key value is moved from zero to one. Note that the value is driven with the custom mesh property *Growth*.
+
+When the option *Advanced* is selected, the process is similar but the user can select the number of growth groups. Leaves are divided evenly into these groups and each group growth is controlled by a single shape key, while all the shape keys will controlled (driven) with the custom *Growth* mesh property.
+
+The *Group interval* minimum and maximum sliders can be used to offset the relative start times of the growth groups. Initially each group has the same relative length (1/*N*, where *N* is the group count) and a random offset, relative to the initial length, is then generated between the minimum and maximum values. Negative values mean overlap between groups, positive values mean gaps. The *Random seed* can be set for repeatability.
+
+### Generating UV coordinates
+
+When selected UV coordinates can be generated automatically during leaf import. UV coordinates can be computed from variuous sources. Note that with all UV map types, the coordinates are scaled to fill the unit square. UV maps can be edited later using the UI/Image editor.
+
+#### UV map type (Dropdown)
+
+Only visible when *Generate UV map* is checked. The values include two presets:
+
+1. Isosceles triangle
+2. Unit square
+
+A custom option is also available, where the local (x,y)-coordinates of a selected mesh are copied for each imported leaf. Please note that the order of the vertices in the input mesh is key. When creating the target mesh, extruding starting from a single vertex is probably the easiest way achieve the wanted vertex order.
+
+UV coordinates can also be read from an *Extended OBJ* file, by selecting the *From file* option. In this case the *xy*-coordinates of the basis geometry vertices are used as UV-coordinates.
+
+#### UV mesh data (Mesh selector)
+
+Only visible when *UV map type* is set to *Custom*. Used to select a mesh, whose (x,y)-coordinates are copied to form the UV-map of each leaf.
