@@ -161,7 +161,7 @@ When the option *Advanced* is selected, the process is similar but the user can 
 
 The *Group interval* minimum and maximum sliders can be used to offset the relative start times of the growth groups. Initially each group has the same relative length (1/*N*, where *N* is the group count) and a random offset, relative to the initial length, is then generated between the minimum and maximum values. Negative values mean overlap between groups, positive values mean gaps. The *Random seed* can be set for repeatability.
 
-![Simple](https://github.com/InverseTampere/qsm-fanni-matlab/raw/master/src/growth-simple.gif) | ![Advanced](https://github.com/InverseTampere/qsm-fanni-matlab/raw/master/src/growth-advanced.gif)
+![Simple](https://github.com/InverseTampere/qsm-blender-addons/raw/master/src/growth-simple.gif) | ![Advanced](https://github.com/InverseTampere/qsm-blender-addons/raw/master/src/growth-advanced.gif)
 ---|---
 Simple | Advanced (Groups = 5, Min = -75%, Max = -20%)
 
