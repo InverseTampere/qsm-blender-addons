@@ -1,3 +1,10 @@
+# 2020-08-17 Version 1.0.0
+
+- Support for Blender versions 2.80 and up.
+	- New file *qsm_leaf_import_279.py* for older versions.
+		- Will not be updated in the future.
+	- *qsm_leaf_import.py* for Blender 2.80 and up.
+
 # 2019-07-24 Version 0.9.0
 
 - Fixed import bug, when importing mesh cylinder with single color value.
