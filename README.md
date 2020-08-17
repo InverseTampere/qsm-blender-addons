@@ -161,6 +161,10 @@ When the option *Advanced* is selected, the process is similar but the user can 
 
 The *Group interval* minimum and maximum sliders can be used to offset the relative start times of the growth groups. Initially each group has the same relative length (1/*N*, where *N* is the group count) and a random offset, relative to the initial length, is then generated between the minimum and maximum values. Negative values mean overlap between groups, positive values mean gaps. The *Random seed* can be set for repeatability.
 
+![Simple](https://github.com/InverseTampere/qsm-fanni-matlab/raw/master/src/growth-simple.gif) | ![Advanced](https://github.com/InverseTampere/qsm-fanni-matlab/raw/master/src/growth-advanced.gif)
+---|---
+Simple | Advanced (Groups = 5, Min = -75%, Max = -20%)
+
 ### Generating UV coordinates
 
 When selected UV coordinates can be generated automatically during leaf import. UV coordinates can be computed from variuous sources. Note that with all UV map types, the coordinates are scaled to fill the unit square. UV maps can be edited later using the UI/Image editor.
