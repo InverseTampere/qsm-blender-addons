@@ -163,7 +163,7 @@ The *Group interval* minimum and maximum sliders can be used to offset the relat
 
 ![Simple](https://github.com/InverseTampere/qsm-blender-addons/raw/master/growth-simple.gif) | ![Advanced](https://github.com/InverseTampere/qsm-blender-addons/raw/master/growth-advanced.gif)
 ---|---
-Simple | Advanced (Groups = 5, Min = -75%, Max = -20%)
+Simple | Advanced (Groups = 5, Min = -40%, Max = -20%)
 
 ### Generating UV coordinates
 
